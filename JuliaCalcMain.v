@@ -1,4 +1,5 @@
-`include "def.h"
+`default_nettype none
+`include "def.v"
 
 module JuliaCalcMain(
 	input clk,
@@ -18,7 +19,6 @@ module JuliaCalcMain(
 	wire signed [31:0] mod_j_xN_out, mod_j_yN_out;
 	wire signed [31:0] julia_calc_out;
 	wire julia_calc_end_flg;
-//	reg unsigned [31:0] eLimit = 32'd2 * `JL_MUL;
 	
 	wire calc_end;
 	wire [15:0] color;
@@ -81,9 +81,14 @@ module JuliaCalcMain(
 //							| (iteration % 16'hFFFF));
 				
 				// Blue
+//				color = ((16'h0000)
+//							| (16'h0000)
+//							| ((iteration) % 16'hFFFF));
+				
+				// Devil
 				color = ((16'h0000)
-							| (16'h0000)
-							| ((iteration) ^ 16'hFFFF));
+							| ((iteration << 10) % 16'hFFFF)
+							| ((iteration) % 16'hFFFF));
 
 				calc_end = 1;
 				iteration = 0;

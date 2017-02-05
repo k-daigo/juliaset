@@ -1,7 +1,10 @@
+`default_nettype none
+
 //`timescale 1ns/1ms
 
-`include "def.h"
+`include "def.v"
 
+// top module
 module Main(
 	input clk,
 	input [2:0] btn,
@@ -41,45 +44,32 @@ module Main(
 	reg signed [15:0] posy;
 	wire unc_reset;
 
-	reg unsigned [31:0] eLimit = 32'd2 * `JL_MUL;
 	reg signed [31:0] dx, dy;
 
-	reg signed [31:0] mod_j_x0_1, mod_j_y0_1;
-	
-	reg mod_j_enable_1 = 0;
-	reg mod_j_enable_2 = 0;
-	reg mod_j_enable_3 = 0;
-	reg mod_j_enable_4 = 0;
-	reg mod_j_enable_5 = 0;
-	reg mod_j_enable_6 = 0;
-	wire [15:0] color1;
-	wire [15:0] color2;
-	wire [15:0] color3;
-	wire [15:0] color4;
-	wire [15:0] color5;
-	wire [15:0] color6;
+	reg signed [31:0] mod_j_x0_base, mod_j_y0_base;
+	reg signed [31:0] mod_x_JL, mod_y_JL;
+
+	reg [7:0] ii;
+	reg mod_j_enable[`CONCURRENT_COUNT];
+	wire [15:0] color[`CONCURRENT_COUNT];
 	reg signed [31:0] mod_j_y_work;
-	reg signed [31:0] mod_j_x_work1;
-	reg signed [31:0] mod_j_x_work2;
-	reg signed [31:0] mod_j_x_work3;
-	reg signed [31:0] mod_j_x_work4;
-	reg signed [31:0] mod_j_x_work5;
-	reg signed [31:0] mod_j_x_work6;
-	wire julia_calc_end_flg1;
-	wire julia_calc_end_flg2;
-	wire julia_calc_end_flg3;
-	wire julia_calc_end_flg4;
-	wire julia_calc_end_flg5;
-	wire julia_calc_end_flg6;
-	reg unsigned [15:0] color[6];
+	reg signed [31:0] mod_j_x_work[`CONCURRENT_COUNT];
+	wire julia_calc_end_flg[`CONCURRENT_COUNT];
+	reg unsigned [15:0] color_res[`CONCURRENT_COUNT];
 	reg unsigned [15:0] color_tmp;
 	integer targetColorIndex = 0;
 	integer targetColorIndexMax = 0;
-
+	wire currentOut;
+/*
 	reg signed [31:0] xS = -32'd10000; // -1.00
 	reg signed [31:0] xE =  32'd10000; // 1.00
 	reg signed [31:0] yS = -32'd7500; // -0.75;
 	reg signed [31:0] yE =  32'd7500; // 0.75;	
+*/
+	reg signed [31:0] xS = -32'd15000; // -1.50
+	reg signed [31:0] xE =  32'd15000; // 1.50
+	reg signed [31:0] yS = -32'd11250; // -1.125;
+	reg signed [31:0] yE =  32'd11250; // 1.125;	
 	
 	reg signed [31:0] cr;
 	reg signed [31:0] ci;
@@ -259,14 +249,13 @@ module Main(
 	
 	task DrawPoint;
 		if(initilized == 1) begin
-			
 			if(state == `POINT_SET_CURSOR_X_CMD) begin
 				posx = 16'd0;
 				posy = 16'd0;
 				
 				// Julia init
-				mod_j_x0_1 = xS;
-				mod_j_y0_1 = yS;
+				mod_j_x0_base = xS;
+				mod_j_y0_base = yS;
 				
 				// Left Min Top Max
 				// R -1.25 i 0.25
@@ -287,16 +276,16 @@ module Main(
 					cr = -32'd7300;
 					ciCalcMode = 32'd1;
 				// Right Max Top Max
-				// R -0.73 i 0.25
-				end else if(ciCalcMode == 32'd1 && ci > -32'd1000) begin
+				// R -0.73 i 0.1
+				end else if(ciCalcMode == 32'd1 && ci > -32'd750) begin
 					crCalcMode = -32'd1;
 					ciCalcMode = 32'd0;
-					ci = -32'd1000;
+					ci = -32'd750;
 				end
 
-				cr = cr + (32'd30 * crCalcMode);
-				ci = ci + (32'd30 * ciCalcMode);
-
+				cr = cr + (`JULIA_SKIP * crCalcMode);
+				ci = ci + (`JULIA_SKIP * ciCalcMode);
+				
 				w_rs <= 0; w_cs <= 0; w_wr <= 0;
 				w_db <= {8'h00, 8'h4E};
 				wait_time <= `TIME_10NS;
@@ -420,121 +409,57 @@ module Main(
 				next_state <= `CALC_JULIA_TARGET_SELECT;
 
 				iteration <= 16'd1;
-				color[0] = 16'd0;
-				color[1] = 16'd0;
-				color[2] = 16'd0;
-				color[3] = 16'd0;
-				color[4] = 16'd0;
-				color[5] = 16'd0;
+				
+				// julia init
+				for (ii = 0; ii < `CONCURRENT_COUNT; ii = ii + 1) begin
+					color[ii] = 16'd0;
+				end
 				targetColorIndex = 0;
 				
-				mod_j_y_work = mod_j_y0_1;
-				
-				// 1
-				mod_j_x_work1 = mod_j_x0_1;
-				mod_j_enable_1 <= 1'b1;
-				mod_j_x0_1 = mod_j_x0_1 + dx;
-				posx = posx + 16'd1;
-				targetColorIndexMax = 1;
-				
-				// 2
-				if(posx >= `LCD_W) begin
-					// NOP
-				end else begin
-					mod_j_x_work2 = mod_j_x0_1;
-					mod_j_enable_2 <= 1'b1;
-					mod_j_x0_1 = mod_j_x0_1 + dx;
-					posx = posx + 16'd1;
-					targetColorIndexMax = 2;
-				end
-				
-				// 3
-				if(posx >= `LCD_W) begin
-					// NOP
-				end else begin
-					mod_j_x_work3 = mod_j_x0_1;
-					mod_j_enable_3 <= 1'b1;
-					mod_j_x0_1 = mod_j_x0_1 + dx;
-					posx = posx + 16'd1;
-					targetColorIndexMax = 3;
-				end
-				
-				// 4
-				if(posx >= `LCD_W) begin
-					// NOP
-				end else begin
-					mod_j_x_work4 = mod_j_x0_1;
-					mod_j_enable_4 <= 1'b1;
-					mod_j_x0_1 = mod_j_x0_1 + dx;
-					posx = posx + 16'd1;
-					targetColorIndexMax = 4;
-				end
-				
-				// 5
-				if(posx >= `LCD_W) begin
-					// NOP
-				end else begin
-					mod_j_x_work5 = mod_j_x0_1;
-					mod_j_enable_5 <= 1'b1;
-					mod_j_x0_1 = mod_j_x0_1 + dx;
-					posx = posx + 16'd1;
-					targetColorIndexMax = 5;
+				mod_j_y_work = mod_j_y0_base;
+//				mod_y_JL = mod_j_y0_base / `JL_MUL;
+//				mod_x_JL = mod_j_x0_base / `JL_MUL;
+				mod_y_JL = mod_j_y0_base;
+				mod_x_JL = mod_j_x0_base;
+
+				// julia start
+				for (ii = 0; ii < `CONCURRENT_COUNT; ii = ii + 1) begin
+					if(posx >= `LCD_W) begin
+						// NOP
+					end else begin
+						mod_j_x_work[ii] = mod_x_JL;
+						mod_j_enable[ii] <= 1'b1;
+						targetColorIndexMax = ii + 1;
+						
+						// for next
+						mod_j_x0_base = mod_j_x0_base + dx;
+						mod_x_JL = DivX(mod_j_x0_base);
+						posx = posx + 16'd1;
+					end
 				end
 					
 			end else if(state == `CALC_JULIA_TARGET_SELECT) begin
-				if(julia_calc_end_flg1 == 1'b1 && targetColorIndex == 0) begin
-					color[0] <= color1;
-					mod_j_enable_1 <= 1'b0;
-					targetColorIndex = 1;
-					state <= `POINT_DATA_H;
-					
-				end else if(julia_calc_end_flg2 == 1'b1 && targetColorIndex == 1) begin
-					color[1] <= color2;
-					mod_j_enable_2 <= 1'b0;
-					targetColorIndex = 2;
-					
-					w_rs <= `DATA;
-					w_cs <= 0;
-					wait_time <= `TIME_10NS;
-					
-					state <= `WAIT;
-					next_state <= `POINT_DATA_H;
-					
-				end else if(julia_calc_end_flg3 == 1'b1 && targetColorIndex == 2) begin
-					color[2] <= color3;
-					mod_j_enable_3 <= 1'b0;
-					targetColorIndex = 3;
-					
-					w_rs <= `DATA;
-					w_cs <= 0;
-					wait_time <= `TIME_10NS;
-					
-					state <= `WAIT;
-					next_state <= `POINT_DATA_H;
-
-				end else if(julia_calc_end_flg4 == 1'b1 && targetColorIndex == 3) begin
-					color[3] <= color4;
-					mod_j_enable_4 <= 1'b0;
-					targetColorIndex = 4;
-					
-					w_rs <= `DATA;
-					w_cs <= 0;
-					wait_time <= `TIME_10NS;
-					
-					state <= `WAIT;
-					next_state <= `POINT_DATA_H;
-
-				end else if(julia_calc_end_flg5 == 1'b1 && targetColorIndex == 4) begin
-					color[4] <= color5;
-					mod_j_enable_5 <= 1'b0;
-					targetColorIndex = 5;
-					
-					w_rs <= `DATA;
-					w_cs <= 0;
-					wait_time <= `TIME_10NS;
-					
-					state <= `WAIT;
-					next_state <= `POINT_DATA_H;
+			
+				// julia result get
+				currentOut = 0;
+				for (ii = 0; ii < `CONCURRENT_COUNT; ii = ii + 1) begin
+					if(julia_calc_end_flg[ii] == 1'b1 && targetColorIndex == ii && currentOut == 0) begin
+						color[ii] <= color_res[ii];
+						mod_j_enable[ii] <= 1'b0;
+						targetColorIndex = ii + 1;
+						
+						if(ii == 0) begin
+							state <= `POINT_DATA_H;
+						end else begin
+							w_rs <= `DATA;
+							w_cs <= 0;
+							wait_time <= `TIME_10NS;
+							
+							state <= `WAIT;
+							next_state <= `POINT_DATA_H;
+						end
+						currentOut = 1;
+					end
 				end
 			end else if(state == `POINT_DATA_H) begin
 				color_tmp = color[targetColorIndex-1];
@@ -593,20 +518,17 @@ module Main(
 				end
 				
 			end else if(state == `NEXT_POS_PREPER) begin
-				mod_j_enable_1 <= 1'b0;
-				mod_j_enable_2 <= 1'b0;
-				mod_j_enable_3 <= 1'b0;
-				mod_j_enable_4 <= 1'b0;
-				mod_j_enable_5 <= 1'b0;
-				mod_j_enable_6 <= 1'b0;
+				for (ii = 0; ii < `CONCURRENT_COUNT; ii = ii + 1) begin
+					mod_j_enable[ii] <= 1'b0;
+				end
 
 				if(posx >= `LCD_W) begin
 					posx = 16'd0;
 					posy = posy + 16'd1;
 
 					// Julia
-					mod_j_x0_1 = xS;
-					mod_j_y0_1 = mod_j_y0_1 + dy;
+					mod_j_x0_base = xS;
+					mod_j_y0_base = mod_j_y0_base + dy;
 				end
 
 				wait_time <= `TIME_10NS;
@@ -614,7 +536,7 @@ module Main(
 				
 				if(posy >= `LCD_H)begin
 					posy = 16'd0;
-					mod_j_x0_1 = xS;
+					mod_j_x0_base = xS;
 
 					next_state = `POINT_SET_CURSOR_X_CMD;	// next 0
 					
@@ -631,25 +553,28 @@ module Main(
 		end
 	endtask
 
+	function [31:0] DivX;
+		input signed [31:0] x;
+//		DivX = x / `JL_MUL;
+		DivX = x;
+	endfunction
+
 	// calc julia
-	JuliaCalcMain jualCalcMain1(.clk(clk), .enable(mod_j_enable_1),
-			.mod_j_x0_1(mod_j_x_work1), .mod_j_y0_1(mod_j_y_work), .cr(cr), .ci(ci),
-			.out_calc_end(julia_calc_end_flg1), .out_color(color1));
-	JuliaCalcMain jualCalcMain2(.clk(clk), .enable(mod_j_enable_2),
-			.mod_j_x0_1(mod_j_x_work2), .mod_j_y0_1(mod_j_y_work), .cr(cr), .ci(ci),
-			.out_calc_end(julia_calc_end_flg2), .out_color(color2));
-	JuliaCalcMain jualCalcMain3(.clk(clk), .enable(mod_j_enable_3),
-			.mod_j_x0_1(mod_j_x_work3), .mod_j_y0_1(mod_j_y_work), .cr(cr), .ci(ci),
-			.out_calc_end(julia_calc_end_flg3), .out_color(color3));
-	JuliaCalcMain jualCalcMain4(.clk(clk), .enable(mod_j_enable_4),
-			.mod_j_x0_1(mod_j_x_work4), .mod_j_y0_1(mod_j_y_work), .cr(cr), .ci(ci),
-			.out_calc_end(julia_calc_end_flg4), .out_color(color4));
-	JuliaCalcMain jualCalcMain5(.clk(clk), .enable(mod_j_enable_5),
-			.mod_j_x0_1(mod_j_x_work5), .mod_j_y0_1(mod_j_y_work), .cr(cr), .ci(ci),
-			.out_calc_end(julia_calc_end_flg5), .out_color(color5));
-//	JuliaCalcMain jualCalcMain6(.clk(clk), .enable(mod_j_enable_6),
-//			.mod_j_x0_1(mod_j_x_work6), .mod_j_y0_1(mod_j_y_work), .cr(cr), .ci(ci),
-//			.out_calc_end(julia_calc_end_flg6), .out_color(color6));
+	JuliaCalcMain jualCalcMain1(.clk(clk), .enable(mod_j_enable[0]),
+			.mod_j_x0_1(mod_j_x_work[0]), .mod_j_y0_1(mod_y_JL), .cr(cr), .ci(ci),
+			.out_calc_end(julia_calc_end_flg[0]), .out_color(color_res[0]));
+	JuliaCalcMain jualCalcMain2(.clk(clk), .enable(mod_j_enable[1]),
+			.mod_j_x0_1(mod_j_x_work[1]), .mod_j_y0_1(mod_y_JL), .cr(cr), .ci(ci),
+			.out_calc_end(julia_calc_end_flg[1]), .out_color(color_res[1]));
+	JuliaCalcMain jualCalcMain3(.clk(clk), .enable(mod_j_enable[2]),
+			.mod_j_x0_1(mod_j_x_work[2]), .mod_j_y0_1(mod_y_JL), .cr(cr), .ci(ci),
+			.out_calc_end(julia_calc_end_flg[2]), .out_color(color_res[2]));
+	JuliaCalcMain jualCalcMain4(.clk(clk), .enable(mod_j_enable[3]),
+			.mod_j_x0_1(mod_j_x_work[3]), .mod_j_y0_1(mod_y_JL), .cr(cr), .ci(ci),
+			.out_calc_end(julia_calc_end_flg[3]), .out_color(color_res[3]));
+	JuliaCalcMain jualCalcMain5(.clk(clk), .enable(mod_j_enable[4]),
+			.mod_j_x0_1(mod_j_x_work[4]), .mod_j_y0_1(mod_y_JL), .cr(cr), .ci(ci),
+			.out_calc_end(julia_calc_end_flg[4]), .out_color(color_res[4]));
 
 	wire [15:0] out_db;
 	wire out_rs;
@@ -694,12 +619,13 @@ module Main(
 	HexSegDec hs1(ci[7:4], whex1);
 	HexSegDec hs2(cr[3:0], whex2);
 	HexSegDec hs3(cr[7:4], whex3);
-*/	
+*/
+/*	
 	HexSegDec hs0(state[3:0], whex0);
 	HexSegDec hs1(state[7:4], whex1);
-	HexSegDec hs2(targetColorIndex, whex2);
-	HexSegDec hs3(julia_calc_end_flg1, whex3);
-
+	HexSegDec hs2(crCalcMode, whex2);
+	HexSegDec hs3(ciCalcMode, whex3);
+*/
 	assign hled0 = whex0;
 	assign hled1 = whex1;
 	assign hled2 = whex2;

@@ -1,5 +1,6 @@
+`default_nettype none
 //`timescale 1ns/1ms
-`include "def.h"
+`include "def.v"
 
 module JuliaCalc(
 	input clk,
