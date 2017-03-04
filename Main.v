@@ -79,6 +79,10 @@ module Main(
 	reg signed [31:0] crCalcMode = -32'd1;
 	reg signed [31:0] ciCalcMode = 32'd0;
 	
+	integer clockCounter = 0;
+	integer saveClockCounter = 0;
+	integer currentStep = 0;
+	
 //	integer F_HANDLE;
 //	initial F_HANDLE = $fopen("debug.log");	
   
@@ -86,6 +90,7 @@ module Main(
 	Unchatter uc(btn[0], clk, unc_reset);
 
 	always @(posedge clk) begin
+		clockCounter = clockCounter + 1;
 	
 		// to RESET
 		if(unc_reset == 1) begin
@@ -283,8 +288,12 @@ module Main(
 					ci = -32'd750;
 				end
 
-				cr = cr + (`JULIA_SKIP * crCalcMode);
-				ci = ci + (`JULIA_SKIP * ciCalcMode);
+//				cr = cr + (`JULIA_SKIP * crCalcMode);
+//				ci = ci + (`JULIA_SKIP * ciCalcMode);
+				currentStep = (clockCounter - saveClockCounter) / `JULIA_STEP_SPEED;
+				cr = cr + (currentStep * crCalcMode);
+				ci = ci + (currentStep * ciCalcMode);
+				saveClockCounter = clockCounter;
 				
 				w_rs <= 0; w_cs <= 0; w_wr <= 0;
 				w_db <= {8'h00, 8'h4E};
@@ -572,10 +581,11 @@ module Main(
 	JuliaCalcMain jualCalcMain4(.clk(clk), .enable(mod_j_enable[3]),
 			.mod_j_x0_1(mod_j_x_work[3]), .mod_j_y0_1(mod_y_JL), .cr(cr), .ci(ci),
 			.out_calc_end(julia_calc_end_flg[3]), .out_color(color_res[3]));
+/*
 	JuliaCalcMain jualCalcMain5(.clk(clk), .enable(mod_j_enable[4]),
 			.mod_j_x0_1(mod_j_x_work[4]), .mod_j_y0_1(mod_y_JL), .cr(cr), .ci(ci),
 			.out_calc_end(julia_calc_end_flg[4]), .out_color(color_res[4]));
-
+*/
 	wire [15:0] out_db;
 	wire out_rs;
 	wire out_wr;

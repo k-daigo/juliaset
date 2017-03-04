@@ -76,19 +76,19 @@ module JuliaCalcMain(
 				end
 				
 				// color
-//				color = (((iteration << 12) % 16'hFFFF)
-//							| ((iteration << 8) % 16'hFFFF)
-//							| (iteration % 16'hFFFF));
+				color = (((iteration << 12) % 16'hFFFF)
+							| ((iteration << 8) % 16'hFFFF)
+							| (iteration % 16'hFFFF));
 				
 				// Blue
 //				color = ((16'h0000)
 //							| (16'h0000)
 //							| ((iteration) % 16'hFFFF));
-				
+
 				// Devil
-				color = ((16'h0000)
-							| ((iteration << 10) % 16'hFFFF)
-							| ((iteration) % 16'hFFFF));
+//				color = ((16'h0000)
+//							| ((iteration << 10) % 16'hFFFF)
+//							| ((iteration) % 16'hFFFF));
 
 				calc_end = 1;
 				iteration = 0;
