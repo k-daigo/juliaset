@@ -17,14 +17,12 @@
 `define LCD_W 32'd320
 `define LCD_H 32'd240
 
-`define CONCURRENT_COUNT 4
+`define CONCURRENT_COUNT 1
 
-`define JL_MUL		32'sd10000
-//`define E_LIMIT	32'sd200000000
+`define JL_MUL		32'sd8192
 `define E_LIMIT	32'sd300000000
 `define JULIA_ITE_MAX 16'd60
 `define JULIA_STEP_SPEED 40000
-//`define JULIA_SKIP 32'd40
 
 //
 `define WAIT	8'd0 

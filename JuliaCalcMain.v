@@ -25,9 +25,9 @@ module JuliaCalcMain(
 
 	// calc julia
 	JuliaCalc jualCalc1(.clk(clk), .enable(mod_j_enable_1),
-			.x0(mod_j_x_work), .y0(mod_j_y_work), .cr(cr), .ci(ci),
-			.working(julia_calc_end_flg), .out_xN(mod_j_xN_out), .out_yN(mod_j_yN_out),
-			.dout(julia_calc_out));
+			.in_x(mod_j_x_work), .in_y(mod_j_y_work), .cr(cr), .ci(ci),
+			.out_end(julia_calc_end_flg), .out_wx(mod_j_xN_out), .out_wy(mod_j_yN_out),
+			.out_res(julia_calc_out));
 			
 	always @(posedge clk) begin
 		if(enable == 1'b0) begin

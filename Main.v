@@ -25,8 +25,8 @@ module Main(
 	output [15:0] debug_posy,
 	output [31:0] debug_julia_calc_out
 );
-	parameter INIT_CR = -32'd12501; // JissuBu -1.2501
-	parameter INIT_CI = -32'd2500; // KyosuuBu -0.2500
+	parameter INIT_CR = -32'd10241; // JissuBu -1.2501 * 8192(JL_MUL)
+	parameter INIT_CI = -32'd2048; // KyosuuBu -0.2500 * 8192(JL_MUL)
 	
 	reg [9:0] wled;
 	reg [7:0] state = `RESET1;
@@ -61,15 +61,15 @@ module Main(
 	integer targetColorIndexMax = 0;
 	wire currentOut;
 /*
-	reg signed [31:0] xS = -32'd10000; // -1.00
-	reg signed [31:0] xE =  32'd10000; // 1.00
-	reg signed [31:0] yS = -32'd7500; // -0.75;
-	reg signed [31:0] yE =  32'd7500; // 0.75;	
-*/
 	reg signed [31:0] xS = -32'd15000; // -1.50
 	reg signed [31:0] xE =  32'd15000; // 1.50
 	reg signed [31:0] yS = -32'd11250; // -1.125;
 	reg signed [31:0] yE =  32'd11250; // 1.125;	
+*/
+	reg signed [31:0] xS = -32'd12288; // -1.50 * 8192
+	reg signed [31:0] xE =  32'd12288; // 1.50 * 8192
+	reg signed [31:0] yS = -32'd9216; // -1.125 * 8192
+	reg signed [31:0] yE =  32'd9216; // 1.125; * 8192
 	
 	reg signed [31:0] cr;
 	reg signed [31:0] ci;
@@ -572,6 +572,7 @@ module Main(
 	JuliaCalcMain jualCalcMain1(.clk(clk), .enable(mod_j_enable[0]),
 			.mod_j_x0_1(mod_j_x_work[0]), .mod_j_y0_1(mod_y_JL), .cr(cr), .ci(ci),
 			.out_calc_end(julia_calc_end_flg[0]), .out_color(color_res[0]));
+/*
 	JuliaCalcMain jualCalcMain2(.clk(clk), .enable(mod_j_enable[1]),
 			.mod_j_x0_1(mod_j_x_work[1]), .mod_j_y0_1(mod_y_JL), .cr(cr), .ci(ci),
 			.out_calc_end(julia_calc_end_flg[1]), .out_color(color_res[1]));
@@ -581,7 +582,6 @@ module Main(
 	JuliaCalcMain jualCalcMain4(.clk(clk), .enable(mod_j_enable[3]),
 			.mod_j_x0_1(mod_j_x_work[3]), .mod_j_y0_1(mod_y_JL), .cr(cr), .ci(ci),
 			.out_calc_end(julia_calc_end_flg[3]), .out_color(color_res[3]));
-/*
 	JuliaCalcMain jualCalcMain5(.clk(clk), .enable(mod_j_enable[4]),
 			.mod_j_x0_1(mod_j_x_work[4]), .mod_j_y0_1(mod_y_JL), .cr(cr), .ci(ci),
 			.out_calc_end(julia_calc_end_flg[4]), .out_color(color_res[4]));
