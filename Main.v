@@ -570,20 +570,20 @@ module Main(
 
 	// calc julia
 	JuliaCalcMain jualCalcMain1(.clk(clk), .enable(mod_j_enable[0]),
-			.mod_j_x0_1(mod_j_x_work[0]), .mod_j_y0_1(mod_y_JL), .cr(cr), .ci(ci),
+			.in_x(mod_j_x_work[0]), .in_y(mod_y_JL), .cr(cr), .ci(ci),
 			.out_calc_end(julia_calc_end_flg[0]), .out_color(color_res[0]));
 /*
 	JuliaCalcMain jualCalcMain2(.clk(clk), .enable(mod_j_enable[1]),
-			.mod_j_x0_1(mod_j_x_work[1]), .mod_j_y0_1(mod_y_JL), .cr(cr), .ci(ci),
+			.in_x(mod_j_x_work[1]), .in_y(mod_y_JL), .cr(cr), .ci(ci),
 			.out_calc_end(julia_calc_end_flg[1]), .out_color(color_res[1]));
 	JuliaCalcMain jualCalcMain3(.clk(clk), .enable(mod_j_enable[2]),
-			.mod_j_x0_1(mod_j_x_work[2]), .mod_j_y0_1(mod_y_JL), .cr(cr), .ci(ci),
+			.in_x(mod_j_x_work[2]), .in_y(mod_y_JL), .cr(cr), .ci(ci),
 			.out_calc_end(julia_calc_end_flg[2]), .out_color(color_res[2]));
 	JuliaCalcMain jualCalcMain4(.clk(clk), .enable(mod_j_enable[3]),
-			.mod_j_x0_1(mod_j_x_work[3]), .mod_j_y0_1(mod_y_JL), .cr(cr), .ci(ci),
+			.in_x(mod_j_x_work[3]), .in_y(mod_y_JL), .cr(cr), .ci(ci),
 			.out_calc_end(julia_calc_end_flg[3]), .out_color(color_res[3]));
 	JuliaCalcMain jualCalcMain5(.clk(clk), .enable(mod_j_enable[4]),
-			.mod_j_x0_1(mod_j_x_work[4]), .mod_j_y0_1(mod_y_JL), .cr(cr), .ci(ci),
+			.in_x(mod_j_x_work[4]), .in_y(mod_y_JL), .cr(cr), .ci(ci),
 			.out_calc_end(julia_calc_end_flg[4]), .out_color(color_res[4]));
 */
 	wire [15:0] out_db;
