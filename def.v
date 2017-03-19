@@ -14,16 +14,24 @@
 `define TIME_50NS 5 // 50_000_000 / 1000 / 1000 / 1000 * 10
 `define TIME_10NS 1
 
+// LCDのXY
 `define LCD_W 32'd320
 `define LCD_H 32'd240
 
-`define CONCURRENT_COUNT 1
+// ジュリア集合計算の並列数
+`define CONCURRENT_COUNT 8'd8
 
-`define JL_MUL		32'sd8192
-`define E_LIMIT	32'sd300000000
-`define JULIA_ITE_MAX 16'd60
-`define JULIA_STEP_SPEED 40000
+`define JL_MUL		32'sd8192			// 2**13（2のべき乗とすることで除算ロジックをビットシフト化）
+`define E_LIMIT	32'sd200000000
+`define JULIA_ITE_MAX 16'd200
+`define JULIA_STEP_SPEED 32768		// 2**15
 
+// 位置的なもの
+`define START_X	-32'd12288		// -1.50 * JL_MUL
+`define END_X		32'd12288		// 1.50 * JL_MUL
+`define START_Y	-32'd9216		// -1.125 * JL_MUL
+`define END_Y		32'd9216			// 1.125; * JL_MUL
+	
 //
 `define WAIT	8'd0 
 `define RESET1	8'd1 

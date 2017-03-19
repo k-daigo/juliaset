@@ -1,6 +1,8 @@
 `default_nettype none
+
 `include "def.v"
 
+// ジュリア集合の計算
 module JuliaCalc(
 	input clk,
 	input enable,
