@@ -19,18 +19,40 @@
 `define LCD_H 32'd240
 
 // ジュリア集合計算の並列数
-`define CONCURRENT_COUNT 8'd8
+`define CONCURRENT_NUM 8'd8
 
 `define JL_MUL		32'sd8192			// 2**13（2のべき乗とすることで除算ロジックをビットシフト化）
 `define E_LIMIT	32'sd200000000
-`define JULIA_ITE_MAX 16'd200
-`define JULIA_STEP_SPEED 32768		// 2**15
+`define JULIA_ITE_MAX (16'd32*16'd3)
+//`define JULIA_STEP_SPEED 32768		// 2**15
+`define JULIA_STEP_SPEED 65536		// 2**16
+//`define JULIA_STEP_SPEED 131072		// 2**17
 
 // 位置的なもの
+/*
+// 大体全体
 `define START_X	-32'd12288		// -1.50 * JL_MUL
 `define END_X		32'd12288		// 1.50 * JL_MUL
 `define START_Y	-32'd9216		// -1.125 * JL_MUL
 `define END_Y		32'd9216			// 1.125; * JL_MUL
+*/
+// 拡大（中）
+`define START_X	-32'd8192		// -1.00 * JL_MUL
+`define END_X		32'd8192			//  1.00 * JL_MUL
+`define START_Y	-32'd6144		// -0.75 * JL_MUL
+`define END_Y		32'd6144			//  0.75; * JL_MUL
+
+// 移動範囲
+`define IDO_LEFT_CR		-32'sd10240		// 左 -1.25 (* JL_MUL)
+`define IDO_RIGHT_CR		-32'sd6144		// 右 -0.75 (* JL_MUL)
+`define IDO_TOP_CI		 32'sd2048		// 上 0.25(* JL_MUL)
+`define IDO_BOTTOM_CI	-32'sd2048		// 下 -0.25 (* JL_MUL)
+/*
+`define IDO_LEFT_CR		-32'sd10240		// 左 -1.25 (* JL_MUL)
+`define IDO_RIGHT_CR		-32'sd6144		// 右 -0.75 (* JL_MUL)
+`define IDO_TOP_CI		 32'sd1228		// 上 0.15 (* JL_MUL)
+`define IDO_BOTTOM_CI	-32'sd1228		// 下 -0.15 (* JL_MUL)
+*/
 	
 //
 `define WAIT	8'd0 
@@ -68,11 +90,11 @@
 `define POINT_CMD								8'd34
 `define POINT_CMD_WRITE						8'd35
 `define POINT_DATA_PREPARE					8'd36
-`define POINT_DATA_H							8'd37
-`define POINT_DATA_H2						8'd38
+//`define POINT_DATA_H							8'd37
+//`define POINT_DATA_H2						8'd38
 `define POINT_DATA_H_WRITE					8'd39
 `define POINT_DATA_L							8'd40
-`define POINT_DATA_L2						8'd41
+//`define POINT_DATA_L2						8'd41
 `define POINT_DATA_L3						8'd42
 `define POINT_DATA_L_WRITE					8'd43
 `define NEXT_POS_PREPER						8'd44

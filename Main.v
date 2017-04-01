@@ -33,25 +33,24 @@ module Main(
 	reg lcd_init = 0;
 	
 	wire [23:0] lcd_init_data;
-	reg lcd_reset, w_rs, w_cs, w_wr;
-	reg unsigned [15:0] w_db;
+	wire lcd_reset, w_rs, w_cs, w_wr;
+	wire [15:0] w_db;
 	
-	reg signed [15:0] posx;
-	reg signed [15:0] posy;
+	wire [15:0] posx;
+	wire [15:0] posy;
 	wire unc_reset;
 
-	reg signed [31:0] dx, dy;
-	reg signed [31:0] curr_x, curr_y;
+	wire signed [31:0] dx, dy;
+	wire [31:0] curr_x, curr_y;
 
-	reg [7:0] ii;
-	reg jcalc_enable[`CONCURRENT_COUNT];
-	reg signed [31:0] jcalc_x[`CONCURRENT_COUNT];
-	wire jcalc_end[`CONCURRENT_COUNT];
-	reg unsigned [15:0] jcalc_res_color[`CONCURRENT_COUNT];
-	wire [15:0] color[`CONCURRENT_COUNT];
-	reg unsigned [15:0] color_tmp;
-	integer jcalc_idx = 0;
-	integer jcalc_idx_max = 0;
+	wire [7:0] ii;
+	wire jcalc_enable[`CONCURRENT_NUM];
+	wire jcalc_end[`CONCURRENT_NUM];
+	wire signed [31:0] jcalc_x[`CONCURRENT_NUM];
+	wire [15:0] jcalc_res_color[`CONCURRENT_NUM];
+	wire [15:0] color_tmp;
+	wire [7:0] jcalc_idx;
+	wire [7:0] jcalc_idx_max;
 
 	wire signed [31:0] cr;	// 実数部
 	wire signed [31:0] ci;	// 虚数部
@@ -67,23 +66,23 @@ module Main(
 //	initial F_HANDLE = $fopen("debug.log");	
   
 	// unchattering
-	Unchatter uc(btn[0], clk, unc_reset);
+	Unchatter uc(.din(btn[0]), .clk(clk), .dout(unc_reset));
 
 	always @(posedge clk) begin
-		jcalc_step_cnt = jcalc_step_cnt + 1;
+		jcalc_step_cnt <= jcalc_step_cnt + 1;
 	
 		// リセット
 		if(unc_reset == 1) begin
 			lcd_reset_state <= 1;
 			state <= `RESET1;
-			init_seq = 0;
+			init_seq <= 0;
 			lcd_init <= 0;
 
 			// ジュリア集合の計算関係の初期化
 			dx <= (`END_X - `START_X) / `LCD_W;
 			dy <= (`END_Y - `START_Y) / `LCD_H;
-			cr = INIT_CR;
-			ci = INIT_CI;
+			cr <= INIT_CR;
+			ci <= INIT_CI;
 			jcalc_mode_cr <= -32'd1;
 			jcalc_mode_ci <= 32'd0;
 
@@ -247,38 +246,32 @@ module Main(
 
 			w_rs <= 0; w_cs <= 0; w_wr <= 0;
 			w_db <= {8'h00, 8'h4E};
-			wait_time <= `TIME_10NS;
-			
-			state <= `WAIT;
-			next_state <= `POINT_SET_CURSOR_X_CMD_WRITE;
+
+			state <= `POINT_SET_CURSOR_X_CMD_WRITE;
 			
 			// 位置制御
-			// Left Min Top Max
-			// R -1.25 i 0.25
-			if(jcalc_mode_cr == -32'd1 && cr < -32'd12500) begin
-				jcalc_mode_cr = 32'd0;
-				cr = -32'd12500;
-				jcalc_mode_ci = -32'd1;
-			// Left Min Bottom Min
-			// R -1.25 i -0.25
-			end else if(jcalc_mode_ci == -32'd1 && ci < -32'd2500) begin
-				jcalc_mode_cr = 32'd1;
-				jcalc_mode_ci = 32'd0;
-				ci = -32'd2500;
-			// Right Max Bottom Min
-			// R -0.73 i -0.25
-			end else if(jcalc_mode_cr == 32'd1 && cr > -32'd7300) begin
-				jcalc_mode_cr = 32'd0;
-				cr = -32'd7300;
-				jcalc_mode_ci = 32'd1;
-			// Right Max Top Max
-			// R -0.73 i 0.1
-			end else if(jcalc_mode_ci == 32'd1 && ci > -32'd750) begin
-				jcalc_mode_cr = -32'd1;
-				jcalc_mode_ci = 32'd0;
-				ci = -32'd750;
+			// Left Top
+			if(jcalc_mode_cr == -32'sd1 && cr < `IDO_LEFT_CR) begin
+				jcalc_mode_cr = 32'sd0;
+				jcalc_mode_ci = -32'sd1;
+				
+			// Left Bottom
+			end else if(jcalc_mode_ci == -32'sd1 && ci < `IDO_BOTTOM_CI) begin
+				jcalc_mode_cr = 32'sd1;
+				jcalc_mode_ci = 32'sd0;
+				
+			// Right Bottom
+			end else if(jcalc_mode_cr == 32'sd1 && cr > `IDO_RIGHT_CR) begin
+				jcalc_mode_cr = 32'sd0;
+				jcalc_mode_ci = 32'sd1;
+				
+			// Right Top
+			end else if(jcalc_mode_ci == 32'sd1 && ci > `IDO_TOP_CI) begin
+				jcalc_mode_cr = -32'sd1;
+				jcalc_mode_ci = 32'sd0;
 			end
-
+			
+			// カウンタ差分より今回の加減算値を算出
 			jcalc_step_cnt_curr = (jcalc_step_cnt - jcalc_step_cnt_prev) / `JULIA_STEP_SPEED;
 			jcalc_step_cnt_prev = jcalc_step_cnt;
 
@@ -286,131 +279,106 @@ module Main(
 			ci = ci + (jcalc_step_cnt_curr * jcalc_mode_ci);
 
 		end else if(state == `POINT_SET_CURSOR_X_CMD_WRITE) begin
-			w_cs <= 1; w_wr <= 1;
-			wait_time <= `TIME_10NS;
-			
-			state <= `WAIT;
-			next_state <= `POINT_SET_CURSOR_X_DATA;
+			w_cs <= 1;
+			w_wr <= 1;
+
+			state <= `POINT_SET_CURSOR_X_DATA;
 
 		end else if(state == `POINT_SET_CURSOR_X_DATA) begin
-			w_rs <= `DATA; w_cs <= 0;
-			w_db <= 16'h0000;
+			w_rs <= `DATA;
+			w_cs <= 0;
 			w_wr <= 0;
-			wait_time <= `TIME_10NS;
-			
-			state <= `WAIT;
-			next_state <= `POINT_SET_CURSOR_X_DATA_WRITE;
+			w_db <= 16'h0000;
+
+			state <= `POINT_SET_CURSOR_X_DATA_WRITE;
 			
 		end else if(state == `POINT_SET_CURSOR_X_DATA_WRITE) begin
 			w_wr <= 1;
-			wait_time <= `TIME_10NS;
-			
-			state <= `WAIT;
-			next_state <= `POINT_SET_CURSOR_X_DATA2;
+
+			state <= `POINT_SET_CURSOR_X_DATA2;
 
 		end else if(state == `POINT_SET_CURSOR_X_DATA2) begin
+			w_wr <= 0;
 			w_db <= 16'h0000;
-			w_wr <= 0;//
-			wait_time <= `TIME_10NS;
-			
-			state <= `WAIT;
-			next_state <= `POINT_SET_CURSOR_X_DATA_WRITE2;
+
+			state <= `POINT_SET_CURSOR_X_DATA_WRITE2;
 			
 		end else if(state == `POINT_SET_CURSOR_X_DATA_WRITE2) begin
-			w_cs <= 1; w_wr <= 1;
-			wait_time <= `TIME_10NS;
-			
-			state <= `WAIT;
-			next_state <= `POINT_SET_CURSOR_Y_CMD;
+			w_cs <= 1;
+			w_wr <= 1;
+
+			state <= `POINT_SET_CURSOR_Y_CMD;
 
 		end else if(state == `POINT_SET_CURSOR_Y_CMD) begin
-			w_rs <= `CMD; w_cs <= 0;
+			w_rs <= `CMD;
+			w_cs <= 0;
+			w_wr <= 0;
 			w_db <= {8'h00, 8'h4F};
-			w_wr <= 0;//
-			wait_time <= `TIME_10NS;
-			
-			state <= `WAIT;
-			next_state <= `POINT_SET_CURSOR_Y_CMD_WRITE;
+
+			state <= `POINT_SET_CURSOR_Y_CMD_WRITE;
 		
 		end else if(state == `POINT_SET_CURSOR_Y_CMD_WRITE) begin
-			w_cs <= 1; w_wr <= 1;
-			wait_time <= `TIME_10NS;
-			
-			state <= `WAIT;
-			next_state <= `POINT_SET_CURSOR_Y_DATA;
+			w_cs <= 1;
+			w_wr <= 1;
+
+			state <= `POINT_SET_CURSOR_Y_DATA;
 			
 		end else if(state == `POINT_SET_CURSOR_Y_DATA) begin
-			w_rs <= `DATA; w_cs <= 0;
+			w_rs <= `DATA;
+			w_cs <= 0;
 			w_db <= {8'h00, 8'h00};
-			wait_time <= `TIME_10NS;
-			
-			state <= `WAIT;
-			next_state <= `POINT_SET_CURSOR_Y_DATA_WRITE;
+
+			state <= `POINT_SET_CURSOR_Y_DATA_WRITE;
 		
 		end else if(state == `POINT_SET_CURSOR_Y_DATA_WRITE) begin
 			w_wr <= 1;
-			wait_time <= `TIME_10NS;
-			
-			state <= `WAIT;
-			next_state <= `POINT_SET_CURSOR_Y_DATA2;
+
+			state <= `POINT_SET_CURSOR_Y_DATA2;
 
 		end else if(state == `POINT_SET_CURSOR_Y_DATA2) begin
 			w_db <= {8'h00, 8'h00};
-			wait_time <= `TIME_10NS;
+
+			state <= `POINT_SET_CURSOR_Y_DATA_WRITE2;
 			
-			state <= `WAIT;
-			next_state <= `POINT_SET_CURSOR_Y_DATA_WRITE2;
-		
 		end else if(state == `POINT_SET_CURSOR_Y_DATA_WRITE2) begin
-			w_cs <= 1; w_wr <= 1;
-			wait_time <= `TIME_10NS;
-			
-			state <= `WAIT;
-			next_state <= `POINT_PREPARE_CMD;
+			w_cs <= 1;
+			w_wr <= 1;
+
+			state <= `POINT_PREPARE_CMD;
 
 		end else if(state == `POINT_PREPARE_CMD) begin
 			w_rs <= `CMD;
 			w_cs <= 0;
 			w_wr <= 0;
-			wait_time <= `TIME_10NS;
 			
-			state <= `WAIT;
-			next_state <= `POINT_CMD;
+			state <= `POINT_CMD;
 			
 		end else if(state == `POINT_CMD) begin
 			w_db <= {8'h00, 8'h22};
-			wait_time <= `TIME_10NS;
 			
-			state <= `WAIT;
-			next_state <= `POINT_CMD_WRITE;
+			state <= `POINT_CMD_WRITE;
 			
 		end else if(state == `POINT_CMD_WRITE) begin
 			w_cs <= 1;
 			w_wr <= 1;
+			
 			wait_time <= `TIME_10NS;
-
 			state <= `WAIT;
 			next_state <= `POINT_DATA_PREPARE;
 
 		end
 	
-		// Xのループはここから
+		// X先頭のループはここから
 		else if(state == `POINT_DATA_PREPARE) begin
 			w_rs <= `DATA;
 			w_cs <= 0;
-			wait_time <= `TIME_10NS;
+
+			state <= `CALC_JULIA_TARGET_SELECT;
 			
-			state <= `WAIT;
-			next_state <= `CALC_JULIA_TARGET_SELECT;
-			
-			// color初期化
-			for (ii = 8'd0; ii < `CONCURRENT_COUNT; ii = ii + 8'd1) begin
-				color[ii] <= 16'd0;
-			end
 			jcalc_idx <= 0;
 
 			// 並列数分JuliaCalcMainにenableを投げる
-			for (ii = 8'd0; ii < `CONCURRENT_COUNT; ii = ii + 8'd1) begin
+			for (ii = 8'd0; ii < `CONCURRENT_NUM; ii = ii + 8'd1) begin
 			
 				// LCDの横幅を超えたら何もしない
 				if(posx >= `LCD_W) begin
@@ -425,86 +393,58 @@ module Main(
 					posx = posx + 16'd1;		// ここをノンブロッキングにしたいが。
 				end
 			end
-				
-		end else if(state == `CALC_JULIA_TARGET_SELECT) begin
+		end
 		
-			// 計算結果を取得
-			for (ii = 8'd0; ii < `CONCURRENT_COUNT; ii = ii + 8'd1) begin
+		// 並列Xのループ先頭
+		else if(state == `CALC_JULIA_TARGET_SELECT) begin
+		
+			// 計算完了して未描画のIndexの処理結果を取得
+			for (ii = 8'd0; ii < `CONCURRENT_NUM; ii = ii + 8'd1) begin
 				if(jcalc_end[ii] == 1'b1 && jcalc_idx == ii) begin
-					color[ii] <= jcalc_res_color[ii];
+					color_tmp <= jcalc_res_color[ii];
 					jcalc_enable[ii] <= 1'b0;
 					jcalc_idx <= ii + 1;
-					
-					if(ii == 0) begin
-						state <= `POINT_DATA_H;
-					end else begin
-						w_rs <= `DATA;
-						w_cs <= 0;
-						wait_time <= `TIME_10NS;
-						
-						state <= `WAIT;
-						next_state <= `POINT_DATA_H;
-					end
+
+					// ここで上位4bitも書き込んじゃう
+					w_wr <= 0;
+					w_db <= {8'h00, jcalc_res_color[ii][15:8]};
+					state <= `POINT_DATA_H_WRITE;
 				end
 			end
-		end else if(state == `POINT_DATA_H) begin
-			color_tmp <= color[jcalc_idx - 1];
-			w_db <= {8'h00, color_tmp[15:8]};
-			
-			//$fdisplay(F_HANDLE, "1,%d,%d,%h,%h", posx, posy, color, w_db);
 
-			wait_time <= `TIME_10NS;
-			state <= `WAIT;
-			next_state <= `POINT_DATA_H2;
-
-		end else if(state == `POINT_DATA_H2) begin
-			w_wr <= 0;
-
-			wait_time <= `TIME_10NS;
-			state <= `WAIT;
-			next_state <= `POINT_DATA_H_WRITE;
-			
 		end else if(state == `POINT_DATA_H_WRITE) begin
 			w_wr <= 1;
-			
-			wait_time <= `TIME_10NS;
-			state <= `WAIT;
-			next_state <= `POINT_DATA_L;
-			
+			state <= `POINT_DATA_L;
+
 		end else if(state == `POINT_DATA_L) begin
+			w_wr <= 0;
 			w_db <= {8'h00, color_tmp[7:0]};
 			
 			//$fdisplay(F_HANDLE, "2,%d,%d,%h,%h", posx, posy, color, w_db);
+			state <= `POINT_DATA_L3;
 
-			wait_time <= `TIME_10NS;
-			state <= `WAIT;
-			next_state <= `POINT_DATA_L2;
-			
-		end else if(state == `POINT_DATA_L2) begin
-			w_wr <= 0;
-
-			wait_time <= `TIME_10NS;
-			state <= `WAIT;
-			next_state <= `POINT_DATA_L3;
-			
 		end else if(state == `POINT_DATA_L3) begin
 			w_wr <= 1;
-
-			wait_time <= `TIME_10NS;
-			state <= `WAIT;
-			next_state <= `POINT_DATA_L_WRITE;
+			state <= `POINT_DATA_L_WRITE;
 			
 		end else if(state == `POINT_DATA_L_WRITE) begin
 			w_cs <= 1;
-			
+
+			// 並列数分の描画が完了したら次の塊へ
 			if(jcalc_idx == jcalc_idx_max) begin
 				state <= `NEXT_POS_PREPER;
-			end else begin
+			end
+			
+			// 次のX描画前の準備
+			else begin
+				w_rs <= `DATA;
+				w_cs <= 0;
+
 				state <= `CALC_JULIA_TARGET_SELECT;
 			end
 			
 		end else if(state == `NEXT_POS_PREPER) begin
-			for (ii = 8'd0; ii < `CONCURRENT_COUNT; ii = ii + 8'd1) begin
+			for (ii = 8'd0; ii < `CONCURRENT_NUM; ii = ii + 8'd1) begin
 				jcalc_enable[ii] <= 1'b0;
 			end
 
@@ -516,24 +456,19 @@ module Main(
 				curr_x <= `START_X;
 				curr_y <= curr_y + dy;
 			end
-
-			wait_time <= `TIME_10NS;
-			state <= `WAIT;
 			
-			// 縦幅超えたら右上に戻る
+			// 縦幅超えたら左上に戻る
 			if(posy >= `LCD_H)begin
 				posy <= 16'd0;
 				curr_x <= `START_X;
 
-				next_state <= `POINT_SET_CURSOR_X_CMD;	// next 0
-				
+				state <= `POINT_SET_CURSOR_X_CMD;	// next 0
 			end
 			
 			// こえてなければ次のXの塊
 			else begin
-				next_state <= `POINT_DATA_PREPARE;	// next x
+				state <= `POINT_DATA_PREPARE;	// next x
 			end
-
 		end
 		
 		// WAIT
@@ -549,7 +484,6 @@ module Main(
 	JuliaCalcMain jualCalcMain1(.clk(clk), .enable(jcalc_enable[0]),
 			.in_x(jcalc_x[0]), .in_y(curr_y), .cr(cr), .ci(ci),
 			.out_calc_end(jcalc_end[0]), .out_color(jcalc_res_color[0]));
-
 	JuliaCalcMain jualCalcMain2(.clk(clk), .enable(jcalc_enable[1]),
 			.in_x(jcalc_x[1]), .in_y(curr_y), .cr(cr), .ci(ci),
 			.out_calc_end(jcalc_end[1]), .out_color(jcalc_res_color[1]));

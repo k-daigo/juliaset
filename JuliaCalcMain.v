@@ -2,7 +2,7 @@
 
 `include "def.v"
 
-// ジュリア集合の色決定メイン
+// ジュリア集合の計算
 module JuliaCalcMain(
 	input clk,
 	input enable,
@@ -11,76 +11,59 @@ module JuliaCalcMain(
 	input signed [31:0] cr,
 	input signed [31:0] ci,
 	output out_calc_end,
-	output unsigned [15:0] out_color);
+	output [15:0] out_color);
 	
-	reg [7:0] state = `CALC_JULIA_NOP;
-	reg unsigned [15:0] ite = 16'd0;
+	wire [7:0] state;
+	wire [15:0] ite;
 
-	reg calc_enable = 1'b0;
+	// 1クロックで確定しない場合は以下で値を保持
 	wire signed [31:0] work_x, work_y;
-	wire signed [31:0] res_x, res_y, res_calc;
-	wire jcalc_end;
 	
-	// calc julia
-	JuliaCalc jualCalc1(.clk(clk), .enable(calc_enable),
-			.in_x(work_x), .in_y(work_y), .cr(cr), .ci(ci),
-			.out_end(jcalc_end), .out_wx(res_x), .out_wy(res_y),
-			.out_res(res_calc));
-			
+	// ジュリア集合の計算
+	wire signed [31:0] result_x = (((work_x**2) - (work_y**2)) / `JL_MUL) + cr;
+	wire signed [31:0] result_y = (((32'sd2 * work_x) * work_y) / `JL_MUL) + ci;
+	wire signed [31:0] calc_result = (result_x**2) + (result_y**2);
+
 	always @(posedge clk) begin
 		if(enable == 1'b0) begin
 			state <= `CALC_JULIA;
-			calc_enable <= 1'b0;
 			ite <= 0;
 			work_x <= in_x;
 			work_y <= in_y;
-			
-		end else begin
-		
-			// 計算開始（再計算もここから開始）
-			if(state == `CALC_JULIA && calc_enable == 1'b0) begin
-				calc_enable <= 1'b1;
-			end
-			
-			// 計算回数が上限を超えた場合は収束しないと判断し、iteに固定値を代入
-			else if(state == `CALC_JULIA && calc_enable == 1'b1
-					&& ite > `JULIA_ITE_MAX) begin
-				calc_enable <= 1'b0;
-				state <= `CALC_JULIA_END;
-				
-				ite <= 16'b00000_000000_11111; // RGB
-				
-			end
 
-			// JuliaCalcから計算完了がきたら収束判定
-			else if(state == `CALC_JULIA && calc_enable == 1'b1
-					&& jcalc_end == 1'b1) begin
-					
-				// 上限を超えたら収束扱い
-				if (res_calc > `E_LIMIT) begin
-					state <= `CALC_JULIA_END;
-				end
+		end else begin
+
+			// 上限を超えたら収束扱い
+			if (calc_result > `E_LIMIT) begin
+				state <= `CALC_JULIA_END;
+			end
+			
+			// 上限を超えてなければ再計算
+			else begin
+				work_x <= result_x;
+				work_y <= result_y;
+				ite <= ite + 16'd1;
 				
-				// 上限を超えてなければ再計算
-				else begin
-					state <= `CALC_JULIA;
-					
-					work_x <= res_x;
-					work_y <= res_y;
-					calc_enable <= 1'b0;
-					ite <= ite + 16'd1;
+				// 計算回数が上限を超えた場合は収束しないと判断し、iteに固定値を代入
+				if(ite > `JULIA_ITE_MAX) begin
+//					ite <= 16'b00000_000000_00000; // R_G_B
+//					ite <= 16'b11111_111111_11111; // R_G_B
+					ite <= 16'b11111_101111_11001; // R_G_B
+
+					state <= `CALC_JULIA_END;
 				end
 			end
 		end
 	end
 
 	assign out_calc_end = (state == `CALC_JULIA_END ? 1'b1 : 1'b0);
-	// Basic
-	assign out_color = ((ite << 12) % 16'hFFFF) | ((ite << 8) % 16'hFFFF) | (ite % 16'hFFFF);
-	// Blue
-//	assign out_color = 16'h0000 | 16'h0000 | (ite % 16'hFFFF);
-	// Devil
-//	assign out_color = ((16'h0000) | ((ite << 10) % 16'hFFFF) | ((ite) % 16'hFFFF));
+
+//	wire [4:0] red   = ((ite / (`JULIA_ITE_MAX / 16'd32)) >> 0) & 5'b11111;
+	wire [4:0] red   = 5'b11111;
+	wire [5:0] green = ((ite / (`JULIA_ITE_MAX / 16'd64)) >> 0) & 6'b111111;
+	wire [4:0] blue  = ((ite / (`JULIA_ITE_MAX / 16'd32)) >> 1) & 5'b11111;
+
+	assign out_color = {red, green, blue};
 	
 endmodule
 
